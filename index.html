@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Find what you stored, and the bin you stored it in. A private, local storage inventory.">
+<title>Bin Organizer</title><link rel="stylesheet" href="style.css"><script src="app.js" defer></script>
+</head>
+<body>
+<header><a class="brand" href="./"><span aria-hidden="true">▤</span> Bin Organizer</a><div class="actions"><button id="import">Import backup</button><button id="export">Export backup</button></div></header>
+<main>
+<div class="intro"><div><p class="eyebrow">A PLACE FOR EVERYTHING</p><h1>Find it. Without unpacking.</h1><p>Your bins, their contents, one searchable collection.</p></div><button class="primary" id="add-bin">+ New bin</button></div>
+<div class="toolbar"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search items or bins…" aria-label="Search items or bins"></label><span id="stats"></span></div>
+<p class="storage-note">Saved in this browser on this device. Export a backup to keep a separate copy or move to another device.</p>
+<p id="status" role="status" aria-live="polite"></p><section id="bins" aria-label="Storage bins"></section>
+</main>
+<dialog id="editor"><form id="edit-form"><div class="dialog-heading"><h2 id="editor-title"></h2><button type="button" class="close" data-close aria-label="Close">×</button></div><label>Name <span aria-hidden="true">*</span><input id="name" required maxlength="200" autocomplete="off"></label><div id="item-fields"><label>Date (optional)<input id="date" type="date"></label><label>Pictures<input id="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple></label><p class="hint">JPEG, PNG or WebP. Up to 10 pictures per item, 10 MB per original. Images are resized for storage.</p><div id="photo-list" class="photos"></div></div><p id="form-error" role="alert"></p><div class="dialog-actions"><button type="button" data-close>Cancel</button><button type="submit" class="primary" id="save">Save</button></div></form></dialog>
+<dialog id="photo-view"><button class="close" data-close aria-label="Close image">×</button><img id="full-photo" alt=""></dialog>
+<input id="import-file" type="file" accept="application/json,.json" hidden>
+<footer>Less searching. More space.</footer>
+</body></html>
