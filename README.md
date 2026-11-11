@@ -2,9 +2,9 @@
 
 A dependency-free static web app for finding things in storage bins.
 
-- Create, rename, and delete bins, including empty bins.
+- Create, rename, and delete bins, including empty bins and optional descriptions.
 - Add, edit, and delete items with a required name, optional date, and multiple photos.
-- Search item and bin names; each matching item appears under its bin.
+- Search item names, bin names, and bin descriptions; each matching item appears under its bin.
 - Save automatically in IndexedDB in the current browser.
 - Import/export a versioned JSON backup containing all bins, items, and photos.
 
@@ -44,7 +44,7 @@ A secure implementation needs per-user ownership and row-level security on every
 
 ## Verification
 
-This environment has Python but no JavaScript runtime or browser. Source and HTML structure were checked locally; browser interaction testing remains required. Suggested smoke test:
+JavaScript syntax, backup validation, and conversion fidelity can be checked with Node. Browser interaction testing remains required. Suggested smoke test:
 
 1. Create two bins, including one left empty; reload and verify persistence.
 2. Add an item with a date and several photos, edit it, remove a photo, and open a photo at full size.
@@ -52,3 +52,5 @@ This environment has Python but no JavaScript runtime or browser. Source and HTM
 4. Export, delete a bin, then import and verify items and photos are restored after reload.
 5. Cancel replacement and try malformed JSON; verify the current collection stays intact.
 6. Check keyboard navigation, required names, mobile layout, and deletion confirmations.
+
+Bin descriptions are optional strings (up to 2000 characters). Existing version 1 backups without descriptions remain compatible. Descriptions are displayed on bin cards and included in search and backups.

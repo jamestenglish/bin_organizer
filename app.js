@@ -28,6 +28,7 @@ function validate(data) {
   }
   for (const bin of data.bins) {
     record(bin);
+    if (bin.description !== undefined && (typeof bin.description !== 'string' || bin.description.length > 2000)) throw Error('A bin has an invalid description (maximum 2000 characters).');
     if (!Array.isArray(bin.items)) throw Error('A bin is missing its items.');
     for (const item of bin.items) {
       record(item);
@@ -69,12 +70,13 @@ function render() {
   const total = db.bins.reduce((n, b) => n + b.items.length, 0);
   $('#stats').textContent = `${db.bins.length} bins · ${total} items`;
   for (const bin of db.bins) {
-    const binMatch = bin.name.toLocaleLowerCase().includes(query);
+    const binMatch = bin.name.toLocaleLowerCase().includes(query) || (bin.description || '').toLocaleLowerCase().includes(query);
     const matches = bin.items.filter(item => binMatch || item.name.toLocaleLowerCase().includes(query));
     if (query && !binMatch && !matches.length) continue;
     const card = el('article', undefined, 'bin');
     const heading = el('div', undefined, 'bin-heading'); const title = el('div');
     title.append(el('h2', bin.name), el('p', `${bin.items.length} items`));
+    if (bin.description) title.append(el('p', bin.description, 'bin-description'));
     const tools = el('div', undefined, 'bin-tools');
     tools.append(button('Edit', () => edit(bin.id)), button('Delete', () => {
       if (confirm(`Delete “${bin.name}” and all ${bin.items.length} items?`)) change(next => { next.bins = next.bins.filter(b => b.id !== bin.id); });
@@ -114,6 +116,8 @@ function edit(binId = null, itemId = null, newItem = false) {
   $('#edit-form').reset(); $('#form-error').textContent = '';
   $('#editor-title').textContent = editing.isItem ? `${item ? 'Edit' : 'Add'} item · ${bin.name}` : `${bin ? 'Edit' : 'New'} bin`;
   $('#name').value = (editing.isItem ? item?.name : bin?.name) || '';
+  $('#bin-fields').hidden = editing.isItem;
+  $('#description').value = editing.isItem ? '' : (bin?.description || '');
   $('#date').value = item?.date || ''; pictures = [...(item?.pictures || [])]; renderPictures();
   $('#item-fields').hidden = !editing.isItem; $('#editor').showModal(); $('#name').focus();
 }
@@ -136,8 +140,10 @@ $('#edit-form').onsubmit = async event => {
   try {
     const next = structuredClone(db);
     if (!editing.isItem) {
-      if (editing.binId) next.bins.find(b => b.id === editing.binId).name = name;
-      else next.bins.push({id:uid(), name, items:[]});
+      const description = $('#description').value.trim();
+      if (description.length > 2000) throw Error('Description must be at most 2000 characters.');
+      if (editing.binId) Object.assign(next.bins.find(b => b.id === editing.binId), {name, description});
+      else next.bins.push({id:uid(), name, description, items:[]});
     } else {
       const bin = next.bins.find(b => b.id === editing.binId); const item = {id:editing.itemId || uid(), name, date, pictures:[...pictures]};
       if (editing.itemId) bin.items[bin.items.findIndex(i => i.id === editing.itemId)] = item; else bin.items.push(item);
