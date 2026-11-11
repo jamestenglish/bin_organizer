@@ -16,6 +16,76 @@ function el(tag, text, className) {
 function button(text, handler, className = 'small') {
   const node = el('button', text, className); node.type = 'button'; node.onclick = handler; return node;
 }
+function iconButton(icon, label, handler, danger = false) {
+  const node = button(icon, handler, `icon-button${danger ? ' danger' : ''}`);
+  node.setAttribute('aria-label', label);
+  node.title = label;
+  return node;
+}
+let closeSwipe = null;
+function swipeActions(surface, actions, label) {
+  surface.classList.add('swipe-surface');
+  actions.classList.add('swipe-actions');
+  surface.tabIndex = 0;
+  surface.setAttribute('aria-label', `${label}. Swipe left or press Left Arrow to reveal edit and delete actions.`);
+  surface.setAttribute('aria-expanded', 'false');
+  let open = false;
+  let gesture = null;
+  let suppressClick = false;
+  function settle(value) {
+    if (value && closeSwipe && closeSwipe !== close) closeSwipe();
+    open = value;
+    actions.inert = !value;
+    surface.classList.toggle('actions-open', value);
+    surface.setAttribute('aria-expanded', String(value));
+    surface.style.removeProperty('--reveal');
+    if (value) closeSwipe = close;
+    else if (closeSwipe === close) closeSwipe = null;
+  }
+  const close = () => settle(false);
+  settle(false);
+  surface.addEventListener('pointerdown', event => {
+    if (!event.isPrimary || event.button !== 0 || event.target.closest('button')) return;
+    gesture = {id:event.pointerId, x:event.clientX, y:event.clientY, start:open ? 88 : 0, horizontal:false};
+    suppressClick = false;
+  });
+  surface.addEventListener('pointermove', event => {
+    if (!gesture || event.pointerId !== gesture.id) return;
+    const dx = event.clientX - gesture.x;
+    const dy = event.clientY - gesture.y;
+    if (!gesture.horizontal) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 10) return;
+      if (Math.abs(dy) >= Math.abs(dx)) { gesture = null; return; }
+      gesture.horizontal = true;
+      surface.setPointerCapture(event.pointerId);
+    }
+    event.preventDefault();
+    surface.style.setProperty('--reveal', `${Math.max(0, Math.min(88, gesture.start - dx))}px`);
+  });
+  function finish(event, cancelled = false) {
+    if (!gesture || event.pointerId !== gesture.id) return;
+    const state = gesture; gesture = null;
+    if (state.horizontal) {
+      suppressClick = true;
+      settle(cancelled ? open : state.start - (event.clientX - state.x) > 32);
+      if (surface.hasPointerCapture(event.pointerId)) surface.releasePointerCapture(event.pointerId);
+    }
+  }
+  surface.addEventListener('pointerup', event => finish(event));
+  surface.addEventListener('pointercancel', event => finish(event, true));
+  surface.addEventListener('click', event => {
+    if (suppressClick) { event.preventDefault(); event.stopPropagation(); suppressClick = false; }
+    else if (open && !event.target.closest('button')) settle(false);
+  }, true);
+  surface.addEventListener('keydown', event => {
+    if (event.target !== surface && event.key !== 'Escape') return;
+    if (event.key === 'ArrowLeft') { event.preventDefault(); settle(true); }
+    if (event.key === 'ArrowRight' || event.key === 'Escape') { event.preventDefault(); settle(false); surface.focus(); }
+  });
+}
+document.addEventListener('pointerdown', event => {
+  if (!event.target.closest('.actions-open') && closeSwipe) closeSwipe();
+});
 function validDate(value) {
   return value === '' || (/^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value);
 }
@@ -66,6 +136,7 @@ async function change(action) {
 function showPicture(src, name) { $('#full-photo').src = src; $('#full-photo').alt = name; $('#photo-view').showModal(); }
 function render() {
   const query = $('#search').value.trim().toLocaleLowerCase();
+  if (closeSwipe) closeSwipe();
   const container = $('#bins'); container.replaceChildren();
   const total = db.bins.reduce((n, b) => n + b.items.length, 0);
   $('#stats').textContent = `${db.bins.length} bins · ${total} items`;
@@ -75,28 +146,30 @@ function render() {
     if (query && !binMatch && !matches.length) continue;
     const card = el('article', undefined, 'bin');
     const heading = el('div', undefined, 'bin-heading'); const title = el('div');
-    title.append(el('h2', bin.name), el('p', `${bin.items.length} items`));
+    title.append(el('h2', bin.name));
     if (bin.description) title.append(el('p', bin.description, 'bin-description'));
+    title.append(el('p', `${bin.items.length} items`));
     const tools = el('div', undefined, 'bin-tools');
-    tools.append(button('Edit', () => edit(bin.id)), button('Delete', () => {
+    tools.append(iconButton('✎', `Edit bin ${bin.name}`, () => edit(bin.id)), iconButton('🗑', `Delete bin ${bin.name}`, () => {
       if (confirm(`Delete “${bin.name}” and all ${bin.items.length} items?`)) change(next => { next.bins = next.bins.filter(b => b.id !== bin.id); });
-    }, 'small danger'));
-    heading.append(title, tools); card.append(heading);
+    }, true));
+    const add = iconButton('+', `Add item to ${bin.name}`, () => edit(bin.id, null, true));
+    heading.append(title, add, tools); swipeActions(heading, tools, `Bin ${bin.name}`); card.append(heading);
     const items = el('div', undefined, 'items');
     for (const item of matches) {
       const row = el('div', undefined, 'item'); const head = el('div', undefined, 'item-head'); const info = el('div');
       info.append(el('h3', item.name));
       if (item.date) { const date = el('time', new Date(`${item.date}T12:00:00`).toLocaleDateString()); date.dateTime = item.date; info.append(date); }
       const actions = el('div', undefined, 'item-actions');
-      actions.append(button('Edit', () => edit(bin.id, item.id)), button('Delete', () => {
+      actions.append(iconButton('✎', `Edit item ${item.name}`, () => edit(bin.id, item.id)), iconButton('🗑', `Delete item ${item.name}`, () => {
         if (confirm(`Delete “${item.name}” from “${bin.name}”?`)) change(next => { const b = next.bins.find(b => b.id === bin.id); b.items = b.items.filter(i => i.id !== item.id); });
-      }, 'small danger')); head.append(info, actions); row.append(head);
+      }, true)); head.append(info, actions); swipeActions(head, actions, `Item ${item.name}`); row.append(head);
       const photos = el('div', undefined, 'photos');
       item.pictures.forEach(src => { const img = el('img'); img.src = src; img.alt = item.name; img.loading = 'lazy'; const btn = button('', () => showPicture(src, item.name), 'photo-button'); btn.setAttribute('aria-label', `View picture of ${item.name}`); btn.append(img); photos.append(btn); });
       row.append(photos); items.append(row);
     }
     if (!bin.items.length) items.append(el('p', 'A little empty. Add your first item.', 'empty-bin'));
-    card.append(items, button('+ Add item', () => edit(bin.id, null, true), 'add-item')); container.append(card);
+    card.append(items); container.append(card);
   }
   if (!container.children.length) {
     const empty = el('div', undefined, 'empty'); empty.append(el('h2', query ? 'No matches found' : 'Give your things a home'), el('p', query ? 'Try another item or bin name.' : 'Create a bin, add what’s inside, and find it here whenever you need it.'));

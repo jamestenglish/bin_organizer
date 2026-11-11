@@ -54,3 +54,5 @@ JavaScript syntax, backup validation, and conversion fidelity can be checked wit
 6. Check keyboard navigation, required names, mobile layout, and deletion confirmations.
 
 Bin descriptions are optional strings (up to 2000 characters). Existing version 1 backups without descriptions remain compatible. Descriptions are displayed on bin cards and included in search and backups.
+
+To edit or delete a bin or item, swipe its header/name row to the left (or drag with a mouse). Swipe right or tap outside to close the actions. Keyboard users can focus the row and press Left Arrow to reveal actions, Tab to reach the buttons, and Escape or Right Arrow to close. The + button in each bin header always adds an item.
