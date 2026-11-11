@@ -44,3 +44,5 @@ footer{margin:10px 0 6px}
 #editor form label{margin-top:6px}
 #editor form input,#editor textarea{margin-top:4px;padding:7px}
 #editor .dialog-actions{position:sticky;bottom:-10px;background:#fff;margin:8px -10px -10px;padding:8px 10px;border-top:1px solid #d8dfd4;z-index:2}
+
+.sort-control{display:inline-flex;align-items:center;gap:4px;font-size:12px}.sort-control select{font:inherit;font-size:16px;color:inherit;background:#fff;border:1px solid #cbd4cb;border-radius:6px;padding:4px}.sort-control select:focus-visible{outline:3px solid #bd7e35;outline-offset:2px}

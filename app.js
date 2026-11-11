@@ -90,7 +90,7 @@ document.addEventListener('pointerdown', event => {
 function validDate(value) {
   return value === '' || (/^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value);
 }
-function validate(data) {
+function validate(data, now = new Date().toISOString()) {
   if (!data || data.version !== 1 || !Array.isArray(data.bins)) throw Error('Expected a version 1 Bin Organizer backup.');
   const ids = new Set();
   function record(value) {
@@ -100,6 +100,11 @@ function validate(data) {
   for (const bin of data.bins) {
     record(bin);
     if (bin.description !== undefined && (typeof bin.description !== 'string' || bin.description.length > 2000)) throw Error('A bin has an invalid description (maximum 2000 characters).');
+    for (const field of ['addedAt', 'updatedAt']) {
+      const value = bin[field];
+      if (value === undefined || value === null || value === '') bin[field] = now;
+      else if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) throw Error(`A bin has an invalid ${field} timestamp.`);
+    }
     if (!Array.isArray(bin.items)) throw Error('A bin is missing its items.');
     for (const item of bin.items) {
       record(item);
@@ -107,6 +112,26 @@ function validate(data) {
     }
   }
   return data;
+}
+// Only changes to bin details or membership advance the bin's updated time.
+function updateBinDetails(bin, name, description, now = new Date().toISOString()) {
+  if (bin.name !== name || (bin.description || '') !== description) bin.updatedAt = now;
+  Object.assign(bin, {name, description});
+}
+function saveBinItem(bin, item, existingId, now = new Date().toISOString()) {
+  if (existingId) bin.items[bin.items.findIndex(i => i.id === existingId)] = item;
+  else { bin.items.push(item); bin.updatedAt = now; }
+}
+function deleteBinItem(bin, itemId, now = new Date().toISOString()) {
+  const remaining = bin.items.filter(item => item.id !== itemId);
+  if (remaining.length !== bin.items.length) { bin.items = remaining; bin.updatedAt = now; }
+}
+function compareBins(a, b, sortBy) {
+  if (sortBy === 'updatedAt' || sortBy === 'addedAt') {
+    const timeDifference = Date.parse(b[sortBy]) - Date.parse(a[sortBy]);
+    if (timeDifference) return timeDifference;
+  }
+  return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
 }
 function openStore() {
   return new Promise((resolve, reject) => {
@@ -146,7 +171,7 @@ function render() {
   const container = $('#bins'); container.replaceChildren();
   const total = db.bins.reduce((n, b) => n + b.items.length, 0);
   $('#stats').textContent = `${db.bins.length} bins · ${total} items`;
-  for (const bin of db.bins) {
+  for (const bin of [...db.bins].sort((a, b) => compareBins(a, b, $('#sort-bins').value))) {
     const binMatch = matchesSearch(`${bin.name} ${bin.description || ''}`, terms);
     const matches = bin.items.filter(item => binMatch || matchesSearch(item.name, terms));
     if (query && !binMatch && !matches.length) continue;
@@ -168,7 +193,7 @@ function render() {
       if (item.date) { const date = el('time', new Date(`${item.date}T12:00:00`).toLocaleDateString()); date.dateTime = item.date; info.append(date); }
       const actions = el('div', undefined, 'item-actions');
       actions.append(iconButton('✎', `Edit item ${item.name}`, () => edit(bin.id, item.id)), iconButton('🗑', `Delete item ${item.name}`, () => {
-        if (confirm(`Delete “${item.name}” from “${bin.name}”?`)) change(next => { const b = next.bins.find(b => b.id === bin.id); b.items = b.items.filter(i => i.id !== item.id); });
+        if (confirm(`Delete “${item.name}” from “${bin.name}”?`)) change(next => { const b = next.bins.find(b => b.id === bin.id); deleteBinItem(b, item.id); });
       }, true)); head.append(info, actions); swipeActions(head, actions, `Item ${item.name}`); row.append(head);
       const photos = el('div', undefined, 'photos');
       item.pictures.forEach(src => { const img = el('img'); img.src = src; img.alt = item.name; img.loading = 'lazy'; const btn = button('', () => showPicture(src, item.name), 'photo-button'); btn.setAttribute('aria-label', `View picture of ${item.name}`); btn.append(img); photos.append(btn); });
@@ -221,11 +246,12 @@ $('#edit-form').onsubmit = async event => {
     if (!editing.isItem) {
       const description = $('#description').value.trim();
       if (description.length > 2000) throw Error('Description must be at most 2000 characters.');
-      if (editing.binId) Object.assign(next.bins.find(b => b.id === editing.binId), {name, description});
-      else next.bins.push({id:uid(), name, description, items:[]});
+      const now = new Date().toISOString();
+      if (editing.binId) updateBinDetails(next.bins.find(b => b.id === editing.binId), name, description, now);
+      else next.bins.push({id:uid(), name, description, items:[], addedAt:now, updatedAt:now});
     } else {
       const bin = next.bins.find(b => b.id === editing.binId); const item = {id:editing.itemId || uid(), name, date, pictures:[...pictures]};
-      if (editing.itemId) bin.items[bin.items.findIndex(i => i.id === editing.itemId)] = item; else bin.items.push(item);
+      saveBinItem(bin, item, editing.itemId);
     }
     await commit(next); $('#editor').close();
   } catch(error) { $('#form-error').textContent = `Could not save: ${error.message}`; }
@@ -240,6 +266,8 @@ $('#photos').onchange = async event => {
   finally { $('#save').disabled = false; $('#photos').disabled = false; event.target.value = ''; }
 };
 document.querySelectorAll('[data-close]').forEach(btn => btn.onclick = () => btn.closest('dialog').close());
+$('#sort-bins').value = 'updatedAt';
+$('#sort-bins').onchange = render;
 $('#show-pictures').checked = false;
 $('#show-pictures').onchange = event => {
   document.body.classList.toggle('pictures-visible', event.target.checked);
@@ -260,7 +288,15 @@ $('#import-file').onchange = async event => {
   finally { event.target.value = ''; }
 };
 (async () => {
-  try { storage = await openStore(); const saved = await readStore(); if (saved) db = validate(saved); }
+  try {
+    storage = await openStore();
+    const saved = await readStore();
+    if (saved) {
+      const needsTimestamps = saved.bins?.some(bin => !bin.addedAt || !bin.updatedAt);
+      db = validate(saved);
+      if (needsTimestamps) await commit(db);
+    }
+  }
   catch(error) { message(`Could not load browser storage: ${error.message} Avoid making changes until this is resolved.`); storage = null; }
   render();
 })();

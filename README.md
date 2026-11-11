@@ -56,3 +56,9 @@ JavaScript syntax, backup validation, and conversion fidelity can be checked wit
 Bin descriptions are optional strings (up to 2000 characters). Existing version 1 backups without descriptions remain compatible. Descriptions are displayed on bin cards and included in search and backups.
 
 To edit or delete a bin or item, swipe its header/name row to the left (or drag with a mouse). Swipe right or tap outside to close the actions. Keyboard users can focus the row and press Left Arrow to reveal actions, Tab to reach the buttons, and Escape or Right Arrow to close. The + button in each bin header always adds an item.
+
+Bins include `addedAt` and `updatedAt` ISO date/time strings in backups. New bins receive both timestamps. Changing a bin's name or description, or adding/deleting an item, updates `updatedAt`; editing an existing item (including its pictures) does not. Saving unchanged bin details also leaves the timestamp unchanged. Older backups and existing browser data receive the current time for each missing timestamp, while supplied timestamps are preserved. Migrated browser data is saved so its timestamps remain stable on reload.
+
+The Sort control defaults to Updated (newest first), with Added (newest first) and Name (alphabetical) options. Timestamp ties sort by name; name ties sort by ID. Sorting changes only the display order.
+
+Run the timestamp and sorting regression checks with `node --test tests/bin-metadata.test.cjs`.

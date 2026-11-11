@@ -6,7 +6,7 @@
 <title>Bin Organizer</title><link rel="stylesheet" href="style.css"><script src="app.js" defer></script>
 </head>
 <body>
-<header><a class="brand" href="./"><span aria-hidden="true">▤</span> Bin Organizer</a><div class="actions"><label class="picture-toggle"><input id="show-pictures" type="checkbox"> Show pictures</label><button id="import">Import backup</button><button id="export">Export backup</button></div></header>
+<header><a class="brand" href="./"><span aria-hidden="true">▤</span> Bin Organizer</a><div class="actions"><label class="sort-control">Sort <select id="sort-bins"><option value="updatedAt" selected>Updated</option><option value="addedAt">Added</option><option value="name">Name</option></select></label><label class="picture-toggle"><input id="show-pictures" type="checkbox"> Show pictures</label><button id="import">Import backup</button><button id="export">Export backup</button></div></header>
 <main>
 <div class="toolbar"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search items, bins or descriptions…" aria-label="Search items, bins or descriptions"></label><span id="stats"></span><button class="primary" id="add-bin">+ New bin</button></div>
 <p class="storage-note">Saved in this browser on this device. Export a backup to keep a separate copy or move to another device.</p>
