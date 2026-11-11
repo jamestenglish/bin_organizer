@@ -45,9 +45,10 @@ function swipeActions(surface, actions, label) {
   const close = () => settle(false);
   settle(false);
   surface.addEventListener('pointerdown', event => {
+    // A new tap must not inherit click suppression from the preceding swipe.
+    suppressClick = false;
     if (!event.isPrimary || event.button !== 0 || event.target.closest('button')) return;
     gesture = {id:event.pointerId, x:event.clientX, y:event.clientY, start:open ? 88 : 0, horizontal:false};
-    suppressClick = false;
   });
   surface.addEventListener('pointermove', event => {
     if (!gesture || event.pointerId !== gesture.id) return;
@@ -74,7 +75,7 @@ function swipeActions(surface, actions, label) {
   surface.addEventListener('pointerup', event => finish(event));
   surface.addEventListener('pointercancel', event => finish(event, true));
   surface.addEventListener('click', event => {
-    if (suppressClick) { event.preventDefault(); event.stopPropagation(); suppressClick = false; }
+    if (suppressClick && event.detail !== 0) { event.preventDefault(); event.stopPropagation(); suppressClick = false; }
     else if (open && !event.target.closest('button')) settle(false);
   }, true);
   surface.addEventListener('keydown', event => {
@@ -134,15 +135,20 @@ async function change(action) {
   catch (error) { message(`Could not save: ${error.message} Export a backup if storage is full.`); }
 }
 function showPicture(src, name) { $('#full-photo').src = src; $('#full-photo').alt = name; $('#photo-view').showModal(); }
+function matchesSearch(text, terms) {
+  const normalized = text.toLocaleLowerCase();
+  return terms.every(term => normalized.includes(term));
+}
 function render() {
   const query = $('#search').value.trim().toLocaleLowerCase();
+  const terms = query.split(/\s+/).filter(Boolean);
   if (closeSwipe) closeSwipe();
   const container = $('#bins'); container.replaceChildren();
   const total = db.bins.reduce((n, b) => n + b.items.length, 0);
   $('#stats').textContent = `${db.bins.length} bins · ${total} items`;
   for (const bin of db.bins) {
-    const binMatch = bin.name.toLocaleLowerCase().includes(query) || (bin.description || '').toLocaleLowerCase().includes(query);
-    const matches = bin.items.filter(item => binMatch || item.name.toLocaleLowerCase().includes(query));
+    const binMatch = matchesSearch(`${bin.name} ${bin.description || ''}`, terms);
+    const matches = bin.items.filter(item => binMatch || matchesSearch(item.name, terms));
     if (query && !binMatch && !matches.length) continue;
     const card = el('article', undefined, 'bin');
     const heading = el('div', undefined, 'bin-heading'); const title = el('div');
@@ -234,6 +240,10 @@ $('#photos').onchange = async event => {
   finally { $('#save').disabled = false; $('#photos').disabled = false; event.target.value = ''; }
 };
 document.querySelectorAll('[data-close]').forEach(btn => btn.onclick = () => btn.closest('dialog').close());
+$('#show-pictures').checked = false;
+$('#show-pictures').onchange = event => {
+  document.body.classList.toggle('pictures-visible', event.target.checked);
+};
 $('#search').oninput = render; $('#add-bin').onclick = () => edit();
 $('#export').onclick = () => {
   const url = URL.createObjectURL(new Blob([JSON.stringify(db, null, 2)], {type:'application/json'}));

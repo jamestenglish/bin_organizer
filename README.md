@@ -4,7 +4,7 @@ A dependency-free static web app for finding things in storage bins.
 
 - Create, rename, and delete bins, including empty bins and optional descriptions.
 - Add, edit, and delete items with a required name, optional date, and multiple photos.
-- Search item names, bin names, and bin descriptions; each matching item appears under its bin.
+- Search item names, bin names, and bin descriptions using word fragments in any order (for example, “ki light” finds “kiwi polarized light”); each matching item appears under its bin.
 - Save automatically in IndexedDB in the current browser.
 - Import/export a versioned JSON backup containing all bins, items, and photos.
 

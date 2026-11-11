@@ -32,3 +32,15 @@ footer{margin:10px 0 6px}
 @media(prefers-reduced-motion:reduce){.swipe-actions{transition:none}}
 
 .swipe-surface[style] .swipe-actions{visibility:visible}
+
+.actions{flex-wrap:wrap;align-items:center}
+.picture-toggle{display:inline-flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;min-height:32px}
+.picture-toggle input{margin:0;accent-color:#315c45}
+.item>.photos{display:none}
+.pictures-visible .item>.photos:not(:empty){display:flex}
+/* Anchor the editor near the top; keep Save reachable when its contents scroll. */
+#editor{margin:8px auto auto;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);padding:10px;overflow-y:auto;scroll-padding-bottom:64px}
+#editor .dialog-heading{margin-bottom:4px}
+#editor form label{margin-top:6px}
+#editor form input,#editor textarea{margin-top:4px;padding:7px}
+#editor .dialog-actions{position:sticky;bottom:-10px;background:#fff;margin:8px -10px -10px;padding:8px 10px;border-top:1px solid #d8dfd4;z-index:2}
